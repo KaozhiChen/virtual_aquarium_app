@@ -87,6 +87,10 @@ class _AquariumScreenState extends State<AquariumScreen>
           speed: speed ?? fishSpeed,
         ));
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum 10 fish allowed')),
+      );
     }
   }
 
