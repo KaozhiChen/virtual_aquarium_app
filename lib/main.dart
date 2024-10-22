@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 void main() {
   runApp(const AquariumApp());
@@ -23,21 +24,44 @@ class AquariumScreen extends StatefulWidget {
   _AquariumScreenState createState() => _AquariumScreenState();
 }
 
-class _AquariumScreenState extends State<AquariumScreen> {
-  // Variables for fish settings
-  double fishSpeed = 1.0;
+class _AquariumScreenState extends State<AquariumScreen>
+    with SingleTickerProviderStateMixin {
+  // Animation controller
+  late AnimationController _controller;
+  double fishSpeed = 1.0; // Speed factor
   Color selectedColor = Colors.orange;
   List<Widget> fishList = [];
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the animation controller
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    // Start the animation loop
+    _controller.repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   // Function to add a new fish
   void addFish() {
-    setState(() {
-      fishList.add(Positioned(
-        left: 50.0, // Example starting position
-        top: 100.0, // Example starting position
-        child: FishWidget(color: selectedColor),
-      ));
-    });
+    if (fishList.length < 10) {
+      setState(() {
+        fishList.add(MovingFish(
+          controller: _controller,
+          color: selectedColor,
+          speed: fishSpeed,
+        ));
+      });
+    }
   }
 
   // Function to save settings (to be implemented with local storage)
@@ -99,7 +123,7 @@ class _AquariumScreenState extends State<AquariumScreen> {
                       max: 5.0,
                       onChanged: (value) {
                         setState(() {
-                          fishSpeed = value;
+                          fishSpeed = value; // Update fish speed
                         });
                       },
                     ),
@@ -143,20 +167,71 @@ class _AquariumScreenState extends State<AquariumScreen> {
   }
 }
 
-// Fish widget (can be customized with animations or images later)
-class FishWidget extends StatelessWidget {
+// Moving fish widget
+class MovingFish extends StatefulWidget {
+  final AnimationController controller;
   final Color color;
+  final double speed;
 
-  const FishWidget({super.key, required this.color});
+  const MovingFish(
+      {super.key,
+      required this.controller,
+      required this.color,
+      required this.speed});
+
+  @override
+  _MovingFishState createState() => _MovingFishState();
+}
+
+class _MovingFishState extends State<MovingFish> {
+  // Random initial positions and movement directions
+  late double posX;
+  late double posY;
+  late double directionX;
+  late double directionY;
+  final double fishSize = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize random position and movement direction
+    final random = Random();
+    posX = random.nextDouble() * 280;
+    posY = random.nextDouble() * 280;
+    directionX =
+        (random.nextDouble() * 2 - 1) * widget.speed; // Random direction X
+    directionY =
+        (random.nextDouble() * 2 - 1) * widget.speed; // Random direction Y
+
+    // Add animation listener to update fish position
+    widget.controller.addListener(() {
+      setState(() {
+        posX += directionX;
+        posY += directionY;
+
+        // Check for collision with the aquarium boundaries
+        if (posX <= 0 || posX >= 280 - fishSize) {
+          directionX = -directionX; // Reverse direction on X axis
+        }
+        if (posY <= 0 || posY >= 280 - fishSize) {
+          directionY = -directionY; // Reverse direction on Y axis
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
+    return Positioned(
+      left: posX,
+      top: posY,
+      child: Container(
+        width: fishSize,
+        height: fishSize,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
