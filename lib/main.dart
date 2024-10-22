@@ -31,7 +31,9 @@ class _AquariumScreenState extends State<AquariumScreen>
   double fishSpeed = 1.0;
   Color selectedColor = Colors.orange;
   List<Widget> fishList = [];
+  List<GlobalKey<MovingFishState>> fishKeys = [];
   final dbHelper = DatabaseHelper();
+  bool collisionEnabled = true;
 
   @override
   void initState() {
@@ -42,16 +44,40 @@ class _AquariumScreenState extends State<AquariumScreen>
     );
     _controller.repeat();
 
-    // load the date if restart
+    // add a listener to detect collision
+    _controller.addListener(_checkCollision);
+
     _loadFishData();
   }
 
-  // 加载鱼的数据
+  // check collision
+  void _checkCollision() {
+    if (!collisionEnabled) return;
+
+    for (int i = 0; i < fishKeys.length; i++) {
+      for (int j = i + 1; j < fishKeys.length; j++) {
+        final fish1 = fishKeys[i].currentState;
+        final fish2 = fishKeys[j].currentState;
+
+        if (fish1 != null && fish2 != null) {
+          // check if collision
+          if ((fish1.posX - fish2.posX).abs() < 20 &&
+              (fish1.posY - fish2.posY).abs() < 20) {
+            fish1.changeDirection();
+            fish2.changeDirection();
+          }
+        }
+      }
+    }
+  }
+
+  // load fish data
   Future<void> _loadFishData() async {
     final fishData = await dbHelper.loadFish();
     if (fishData.isNotEmpty) {
       setState(() {
         fishList.clear();
+        fishKeys.clear();
         for (var fish in fishData) {
           String colorString = fish['fish_color'];
           double speed = fish['fish_speed'];
@@ -62,15 +88,17 @@ class _AquariumScreenState extends State<AquariumScreen>
     }
   }
 
-  // save the data of fish
+  // save fish data
   Future<void> saveFishData() async {
     await dbHelper.clearFish();
-    for (var fishWidget in fishList) {
-      MovingFish fish = fishWidget as MovingFish;
-      String colorString = _colorToString(fish.color);
-      double speed = fish.speed;
+    for (var fishKey in fishKeys) {
+      final fishState = fishKey.currentState;
+      if (fishState != null) {
+        String colorString = _colorToString(fishState.color);
+        double speed = fishState.speed;
 
-      await dbHelper.saveFish(colorString, speed);
+        await dbHelper.saveFish(colorString, speed);
+      }
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved!')),
@@ -81,11 +109,16 @@ class _AquariumScreenState extends State<AquariumScreen>
   void _addFish({Color? color, double? speed}) {
     if (fishList.length < 10) {
       setState(() {
-        fishList.add(MovingFish(
-          controller: _controller,
-          color: color ?? selectedColor,
-          speed: speed ?? fishSpeed,
-        ));
+        GlobalKey<MovingFishState> fishKey = GlobalKey<MovingFishState>();
+        fishKeys.add(fishKey);
+        fishList.add(
+          MovingFish(
+            key: fishKey,
+            controller: _controller,
+            color: color ?? selectedColor,
+            speed: speed ?? fishSpeed,
+          ),
+        );
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,6 +242,22 @@ class _AquariumScreenState extends State<AquariumScreen>
                 ),
               ],
             ),
+
+            // toggle for detecting collision
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const Text('Enable Collision:'),
+                Switch(
+                  value: collisionEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      collisionEnabled = value;
+                    });
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -216,7 +265,7 @@ class _AquariumScreenState extends State<AquariumScreen>
   }
 }
 
-// Moving fish widget
+// Moving fish widget with position and direction
 class MovingFish extends StatefulWidget {
   final AnimationController controller;
   final Color color;
@@ -230,24 +279,28 @@ class MovingFish extends StatefulWidget {
   });
 
   @override
-  _MovingFishState createState() => _MovingFishState();
+  MovingFishState createState() => MovingFishState();
 }
 
-class _MovingFishState extends State<MovingFish> {
+class MovingFishState extends State<MovingFish> {
   late double posX;
   late double posY;
   late double directionX;
   late double directionY;
   final double fishSize = 20;
+  late Color color;
+  late double speed;
 
   @override
   void initState() {
     super.initState();
+    color = widget.color;
+    speed = widget.speed;
     final random = Random();
     posX = random.nextDouble() * 280;
     posY = random.nextDouble() * 280;
-    directionX = (random.nextDouble() * 2 - 1) * widget.speed;
-    directionY = (random.nextDouble() * 2 - 1) * widget.speed;
+    directionX = (random.nextDouble() * 2 - 1) * speed;
+    directionY = (random.nextDouble() * 2 - 1) * speed;
 
     widget.controller.addListener(() {
       setState(() {
@@ -264,6 +317,12 @@ class _MovingFishState extends State<MovingFish> {
     });
   }
 
+  // change direction if collision happend
+  void changeDirection() {
+    directionX = -directionX;
+    directionY = -directionY;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
@@ -273,7 +332,7 @@ class _MovingFishState extends State<MovingFish> {
         width: fishSize,
         height: fishSize,
         decoration: BoxDecoration(
-          color: widget.color,
+          color: color,
           shape: BoxShape.circle,
         ),
       ),
