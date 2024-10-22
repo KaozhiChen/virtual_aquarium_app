@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'helper.dart';
 
 void main() {
   runApp(const AquariumApp());
@@ -26,23 +27,88 @@ class AquariumScreen extends StatefulWidget {
 
 class _AquariumScreenState extends State<AquariumScreen>
     with SingleTickerProviderStateMixin {
-  // Animation controller
   late AnimationController _controller;
-  double fishSpeed = 1.0; // Speed factor
+  double fishSpeed = 1.0;
   Color selectedColor = Colors.orange;
   List<Widget> fishList = [];
+  final dbHelper = DatabaseHelper();
 
   @override
   void initState() {
     super.initState();
-    // Initialize the animation controller
     _controller = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-
-    // Start the animation loop
     _controller.repeat();
+
+    // load the date if restart
+    _loadFishData();
+  }
+
+  // 加载鱼的数据
+  Future<void> _loadFishData() async {
+    final fishData = await dbHelper.loadFish();
+    if (fishData.isNotEmpty) {
+      setState(() {
+        fishList.clear();
+        for (var fish in fishData) {
+          String colorString = fish['fish_color'];
+          double speed = fish['fish_speed'];
+          Color fishColor = _colorFromString(colorString);
+          _addFish(color: fishColor, speed: speed);
+        }
+      });
+    }
+  }
+
+  // save the data of fish
+  Future<void> saveFishData() async {
+    await dbHelper.clearFish();
+    for (var fishWidget in fishList) {
+      MovingFish fish = fishWidget as MovingFish;
+      String colorString = _colorToString(fish.color);
+      double speed = fish.speed;
+
+      await dbHelper.saveFish(colorString, speed);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Settings saved!')),
+    );
+  }
+
+  // add fish
+  void _addFish({Color? color, double? speed}) {
+    if (fishList.length < 10) {
+      setState(() {
+        fishList.add(MovingFish(
+          controller: _controller,
+          color: color ?? selectedColor,
+          speed: speed ?? fishSpeed,
+        ));
+      });
+    }
+  }
+
+  // change color
+  Color _colorFromString(String color) {
+    switch (color) {
+      case 'orange':
+        return Colors.orange;
+      case 'blue':
+        return Colors.blue;
+      case 'green':
+        return Colors.green;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  String _colorToString(Color color) {
+    if (color == Colors.orange) return 'orange';
+    if (color == Colors.blue) return 'blue';
+    if (color == Colors.green) return 'green';
+    return 'orange';
   }
 
   @override
@@ -50,22 +116,6 @@ class _AquariumScreenState extends State<AquariumScreen>
     _controller.dispose();
     super.dispose();
   }
-
-  // Function to add a new fish
-  void addFish() {
-    if (fishList.length < 10) {
-      setState(() {
-        fishList.add(MovingFish(
-          controller: _controller,
-          color: selectedColor,
-          speed: fishSpeed,
-        ));
-      });
-    }
-  }
-
-  // Function to save settings (to be implemented with local storage)
-  void saveSettings() {}
 
   @override
   Widget build(BuildContext context) {
@@ -86,22 +136,20 @@ class _AquariumScreenState extends State<AquariumScreen>
                 color: Colors.lightBlueAccent,
               ),
               child: Stack(
-                children: fishList, // The list of fish inside the aquarium
+                children: fishList,
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // Buttons to add fish and save settings
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
-                  onPressed: addFish, // Add fish functionality
+                  onPressed: () => _addFish(),
                   child: const Text('Add Fish'),
                 ),
                 ElevatedButton(
-                  onPressed: saveSettings, // Save settings functionality
+                  onPressed: saveFishData,
                   child: const Text('Save Settings'),
                 ),
               ],
@@ -109,11 +157,10 @@ class _AquariumScreenState extends State<AquariumScreen>
 
             const SizedBox(height: 20),
 
-            // Sliders and dropdowns for settings
+            // adjust speed and color
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Speed slider
                 Column(
                   children: [
                     const Text('Speed'),
@@ -123,14 +170,12 @@ class _AquariumScreenState extends State<AquariumScreen>
                       max: 5.0,
                       onChanged: (value) {
                         setState(() {
-                          fishSpeed = value; // Update fish speed
+                          fishSpeed = value;
                         });
                       },
                     ),
                   ],
                 ),
-
-                // Color dropdown
                 Column(
                   children: [
                     const Text('Fish Color'),
@@ -173,18 +218,18 @@ class MovingFish extends StatefulWidget {
   final Color color;
   final double speed;
 
-  const MovingFish(
-      {super.key,
-      required this.controller,
-      required this.color,
-      required this.speed});
+  const MovingFish({
+    super.key,
+    required this.controller,
+    required this.color,
+    required this.speed,
+  });
 
   @override
   _MovingFishState createState() => _MovingFishState();
 }
 
 class _MovingFishState extends State<MovingFish> {
-  // Random initial positions and movement directions
   late double posX;
   late double posY;
   late double directionX;
@@ -194,27 +239,22 @@ class _MovingFishState extends State<MovingFish> {
   @override
   void initState() {
     super.initState();
-    // Initialize random position and movement direction
     final random = Random();
     posX = random.nextDouble() * 280;
     posY = random.nextDouble() * 280;
-    directionX =
-        (random.nextDouble() * 2 - 1) * widget.speed; // Random direction X
-    directionY =
-        (random.nextDouble() * 2 - 1) * widget.speed; // Random direction Y
+    directionX = (random.nextDouble() * 2 - 1) * widget.speed;
+    directionY = (random.nextDouble() * 2 - 1) * widget.speed;
 
-    // Add animation listener to update fish position
     widget.controller.addListener(() {
       setState(() {
         posX += directionX;
         posY += directionY;
 
-        // Check for collision with the aquarium boundaries
         if (posX <= 0 || posX >= 280 - fishSize) {
-          directionX = -directionX; // Reverse direction on X axis
+          directionX = -directionX;
         }
         if (posY <= 0 || posY >= 280 - fishSize) {
-          directionY = -directionY; // Reverse direction on Y axis
+          directionY = -directionY;
         }
       });
     });
