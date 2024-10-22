@@ -1,17 +1,16 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const VirtualAquariumApp());
+  runApp(const AquariumApp());
 }
 
-class VirtualAquariumApp extends StatelessWidget {
-  const VirtualAquariumApp({super.key});
+class AquariumApp extends StatelessWidget {
+  const AquariumApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      title: 'Virtual Aquarium',
+      title: 'Aquarium',
       home: AquariumScreen(),
     );
   }
@@ -25,109 +24,140 @@ class AquariumScreen extends StatefulWidget {
 }
 
 class _AquariumScreenState extends State<AquariumScreen> {
-  List<Fish> fishList = [];
-  bool collisionEnabled = true;
+  // Variables for fish settings
+  double fishSpeed = 1.0;
+  Color selectedColor = Colors.orange;
+  List<Widget> fishList = [];
+
+  // Function to add a new fish
+  void addFish() {
+    setState(() {
+      fishList.add(Positioned(
+        left: 50.0, // Example starting position
+        top: 100.0, // Example starting position
+        child: FishWidget(color: selectedColor),
+      ));
+    });
+  }
+
+  // Function to save settings (to be implemented with local storage)
+  void saveSettings() {}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Virtual Aquarium'),
+        title: const Text('Aquarium App'),
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Aquarium container
             Container(
               width: 300,
               height: 300,
-              margin: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.blue),
-                color: Colors.lightBlue[50],
+                border: Border.all(color: Colors.blue, width: 2),
+                color: Colors.lightBlueAccent,
               ),
               child: Stack(
-                children: fishList.map((fish) => _buildFish(fish)).toList(),
+                children: fishList, // The list of fish inside the aquarium
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // Buttons to add fish and save settings
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Row(
+                ElevatedButton(
+                  onPressed: addFish, // Add fish functionality
+                  child: const Text('Add Fish'),
+                ),
+                ElevatedButton(
+                  onPressed: saveSettings, // Save settings functionality
+                  child: const Text('Save Settings'),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Sliders and dropdowns for settings
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Speed slider
+                Column(
                   children: [
-                    const Text('Enable collision effects'),
-                    Switch(
-                      value: collisionEnabled,
+                    const Text('Speed'),
+                    Slider(
+                      value: fishSpeed,
+                      min: 0.5,
+                      max: 5.0,
                       onChanged: (value) {
                         setState(() {
-                          collisionEnabled = value;
+                          fishSpeed = value;
                         });
                       },
                     ),
                   ],
                 ),
-                const SizedBox(width: 24),
-                FloatingActionButton(
-                  onPressed: _addFish,
-                  child: const Icon(Icons.add),
-                )
+
+                // Color dropdown
+                Column(
+                  children: [
+                    const Text('Fish Color'),
+                    DropdownButton<Color>(
+                      value: selectedColor,
+                      items: const [
+                        DropdownMenuItem(
+                          value: Colors.orange,
+                          child: Text('Orange'),
+                        ),
+                        DropdownMenuItem(
+                          value: Colors.blue,
+                          child: Text('Blue'),
+                        ),
+                        DropdownMenuItem(
+                          value: Colors.green,
+                          child: Text('Green'),
+                        ),
+                      ],
+                      onChanged: (Color? newColor) {
+                        setState(() {
+                          selectedColor = newColor!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ],
-            )
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildFish(Fish fish) {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 500),
-      left: fish.position.dx,
-      top: fish.position.dy,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: fish.growing ? 50 : 30,
-        height: fish.growing ? 50 : 30,
-        decoration: BoxDecoration(
-          color: fish.color,
-          shape: BoxShape.circle,
-        ),
+// Fish widget (can be customized with animations or images later)
+class FishWidget extends StatelessWidget {
+  final Color color;
+
+  const FishWidget({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
       ),
     );
   }
-
-  void _addFish() {
-    if (fishList.length < 10) {
-      Fish newFish = Fish(
-        position: Offset(
-          Random().nextDouble() * 280,
-          Random().nextDouble() * 280,
-        ),
-        color: Colors.primaries[Random().nextInt(Colors.primaries.length)],
-        speed: Random().nextDouble() * 5 + 1,
-        growing: true,
-      );
-      setState(() {
-        fishList.add(newFish);
-      });
-
-      Future.delayed(const Duration(seconds: 1), () {
-        setState(() {
-          newFish.growing = false;
-        });
-      });
-    }
-  }
-}
-
-class Fish {
-  Offset position;
-  Color color;
-  double speed;
-  bool growing;
-
-  Fish(
-      {required this.position,
-      required this.color,
-      required this.speed,
-      this.growing = false});
 }
