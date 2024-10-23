@@ -65,6 +65,9 @@ class _AquariumScreenState extends State<AquariumScreen>
               (fish1.posY - fish2.posY).abs() < 20) {
             fish1.changeDirection();
             fish2.changeDirection();
+            // change color
+            fish1.changeColor();
+            fish2.changeColor();
           }
         }
       }
@@ -321,6 +324,29 @@ class MovingFishState extends State<MovingFish> {
   void changeDirection() {
     directionX = -directionX;
     directionY = -directionY;
+  }
+
+  // change color when collision happend
+  void changeColor() {
+    setState(() {
+      color = _randomColor();
+    });
+  }
+
+  // change color randomly
+  Color _randomColor() {
+    final random = Random();
+    int index = random.nextInt(3);
+    switch (index) {
+      case 0:
+        return Colors.orange;
+      case 1:
+        return Colors.blue;
+      case 2:
+        return Colors.green;
+      default:
+        return Colors.orange;
+    }
   }
 
   @override
