@@ -285,7 +285,8 @@ class MovingFish extends StatefulWidget {
   MovingFishState createState() => MovingFishState();
 }
 
-class MovingFishState extends State<MovingFish> {
+class MovingFishState extends State<MovingFish>
+    with SingleTickerProviderStateMixin {
   late double posX;
   late double posY;
   late double directionX;
@@ -294,9 +295,28 @@ class MovingFishState extends State<MovingFish> {
   late Color color;
   late double speed;
 
+  // add scale controller
+  late AnimationController scaleController;
+  late Animation<double> scaleAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    //sacle animation
+    scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    scaleAnimation = Tween<double>(begin: 1.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: scaleController,
+        curve: Curves.easeOut,
+      ),
+    );
+    scaleController.forward();
+
     color = widget.color;
     speed = widget.speed;
     final random = Random();
@@ -350,16 +370,25 @@ class MovingFishState extends State<MovingFish> {
   }
 
   @override
+  void dispose() {
+    scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Positioned(
       left: posX,
       top: posY,
-      child: Container(
-        width: fishSize,
-        height: fishSize,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
+      child: ScaleTransition(
+        scale: scaleAnimation,
+        child: Container(
+          width: fishSize,
+          height: fishSize,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );
