@@ -163,105 +163,107 @@ class _AquariumScreenState extends State<AquariumScreen>
       appBar: AppBar(
         title: const Text('Aquarium App'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Aquarium container
-            Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.blue, width: 2),
-                color: Colors.lightBlueAccent,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Aquarium container
+              Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blue, width: 2),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: Stack(
+                  children: fishList,
+                ),
               ),
-              child: Stack(
-                children: fishList,
+              const SizedBox(height: 20),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _addFish(),
+                    child: const Text('Add Fish'),
+                  ),
+                  ElevatedButton(
+                    onPressed: saveFishData,
+                    child: const Text('Save Settings'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _addFish(),
-                  child: const Text('Add Fish'),
-                ),
-                ElevatedButton(
-                  onPressed: saveFishData,
-                  child: const Text('Save Settings'),
-                ),
-              ],
-            ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
+              // adjust speed and color
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      const Text('Speed'),
+                      Slider(
+                        value: fishSpeed,
+                        min: 0.5,
+                        max: 5.0,
+                        onChanged: (value) {
+                          setState(() {
+                            fishSpeed = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Text('Fish Color'),
+                      DropdownButton<Color>(
+                        value: selectedColor,
+                        items: const [
+                          DropdownMenuItem(
+                            value: Colors.orange,
+                            child: Text('Orange'),
+                          ),
+                          DropdownMenuItem(
+                            value: Colors.blue,
+                            child: Text('Blue'),
+                          ),
+                          DropdownMenuItem(
+                            value: Colors.green,
+                            child: Text('Green'),
+                          ),
+                        ],
+                        onChanged: (Color? newColor) {
+                          setState(() {
+                            selectedColor = newColor!;
+                          });
+                        },
+                      ),
+                    ],
+                  )
+                ],
+              ),
 
-            // adjust speed and color
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
-                  children: [
-                    const Text('Speed'),
-                    Slider(
-                      value: fishSpeed,
-                      min: 0.5,
-                      max: 5.0,
-                      onChanged: (value) {
-                        setState(() {
-                          fishSpeed = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    const Text('Fish Color'),
-                    DropdownButton<Color>(
-                      value: selectedColor,
-                      items: const [
-                        DropdownMenuItem(
-                          value: Colors.orange,
-                          child: Text('Orange'),
-                        ),
-                        DropdownMenuItem(
-                          value: Colors.blue,
-                          child: Text('Blue'),
-                        ),
-                        DropdownMenuItem(
-                          value: Colors.green,
-                          child: Text('Green'),
-                        ),
-                      ],
-                      onChanged: (Color? newColor) {
-                        setState(() {
-                          selectedColor = newColor!;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            // toggle for detecting collision
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Text('Enable Collision:'),
-                Switch(
-                  value: collisionEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      collisionEnabled = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
+              // toggle for detecting collision
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const Text('Enable Collision:'),
+                  Switch(
+                    value: collisionEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        collisionEnabled = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -303,7 +305,7 @@ class MovingFishState extends State<MovingFish>
   void initState() {
     super.initState();
 
-    //sacle animation
+    //scale animation
     scaleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
